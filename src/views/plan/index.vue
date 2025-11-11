@@ -5,7 +5,7 @@
       <div class="header-content">
         <div class="logo">AI旅行规划</div>
         <div class="user-actions">
-          <el-button @click="$router.push('/')">返回首页</el-button>
+          <el-button @click="$router.push('/Home')">返回首页</el-button>
           <template v-if="!isLoggedIn">
             <el-button type="primary" @click="$router.push('/')">登录</el-button>
             <el-button @click="$router.push('/')">注册</el-button>

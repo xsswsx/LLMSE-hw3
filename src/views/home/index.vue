@@ -289,15 +289,72 @@ checkAuthStatus()
   padding: 40px 20px;
 }
 
-.home-page {
-  color: #195CC2;
-  font-size: 18px;
-  text-align: center;
-  padding: 60px 0;
-}
+  .home-hero {
+    text-align: center;
+    padding: 60px 0;
+  }
 
-.login-form,
-.register-form {
-  padding: 20px 0;
-}
+  .home-hero h1 {
+    font-size: 48px;
+    color: #409eff;
+    margin-bottom: 20px;
+    font-weight: bold;
+  }
+
+  .hero-subtitle {
+    font-size: 20px;
+    color: #666;
+    margin-bottom: 40px;
+    line-height: 1.6;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-bottom: 40px;
+  }
+
+  .feature-card {
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-5px);
+  }
+
+  .feature-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+  }
+
+  .feature-card h3 {
+    font-size: 20px;
+    color: #333;
+    margin-bottom: 15px;
+  }
+
+  .feature-card p {
+    color: #666;
+    line-height: 1.6;
+  }
+
+  .cta-section {
+    text-align: center;
+  }
+
+  .user-email {
+    margin-right: 12px;
+    color: #666;
+  }
+
+  .login-form,
+  .register-form {
+    padding: 20px 0;
+  }
 </style>
