@@ -90,12 +90,33 @@
           </el-form-item>
 
           <el-form-item label="特殊需求">
-            <el-input
-              v-model="planForm.specialRequirements"
-              type="textarea"
-              :rows="3"
-              placeholder="例如：带孩子出行、有老人、饮食禁忌、特殊爱好等"
-            />
+            <div class="speech-input-container">
+              <el-input
+                v-model="planForm.specialRequirements"
+                type="textarea"
+                :rows="3"
+                placeholder="例如：带孩子出行、有老人、饮食禁忌、特殊爱好等"
+              />
+              <div class="speech-controls">
+                <el-button 
+                  :type="isRecording ? 'danger' : 'primary'" 
+                  @click="toggleSpeechRecognition"
+                  :loading="speechLoading"
+                  :disabled="!speechSupported"
+                  class="speech-btn"
+                >
+                  <i :class="isRecording ? 'el-icon-microphone' : 'el-icon-microphone'" />
+                  {{ isRecording ? '停止录音' : '语音输入' }}
+                </el-button>
+                <div v-if="speechText" class="speech-result">
+                  <span class="speech-label">语音识别结果：</span>
+                  <span class="speech-text">{{ speechText }}</span>
+                </div>
+                <div v-if="!speechSupported" class="speech-warning">
+                  您的浏览器不支持语音功能
+                </div>
+              </div>
+            </div>
           </el-form-item>
 
           <el-form-item>
@@ -300,6 +321,7 @@ import { ElMessage } from 'element-plus'
 import { supabase } from '@/lib/supabase'
 import { volcanoArkService, type TravelPlanRequest, type TravelPlan } from '@/lib/volcano-ark'
 import { travelPlanService, type SavedTravelPlan } from '@/lib/travel-plan-service'
+import { xunfeiSpeechService } from '@/lib/xunfei-speech-service'
 
 const router = useRouter()
 const route = useRoute()
@@ -333,6 +355,12 @@ const progressStatus = ref<'success' | 'exception' | 'warning' | undefined>(unde
 
 // 当前生成的计划
 const currentPlan = ref<TravelPlan | null>(null)
+
+// 语音识别状态
+const speechLoading = ref(false)
+const isRecording = ref(false)
+const speechText = ref('')
+const speechSupported = ref(true)
 
 // 编辑状态
 const editActivityDialogVisible = ref(false)
@@ -749,6 +777,76 @@ const loadExistingPlan = async (planId: string) => {
   }
 }
 
+// 语音识别功能
+const toggleSpeechRecognition = async () => {
+  if (isRecording.value) {
+    // 停止录音
+    await stopSpeechRecognition()
+  } else {
+    // 开始录音
+    await startSpeechRecognition()
+  }
+}
+
+const startSpeechRecognition = async () => {
+  try {
+    speechLoading.value = true
+    speechText.value = ''
+    
+    // 检查浏览器支持
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      speechSupported.value = false
+      ElMessage.error('您的浏览器不支持语音识别功能')
+      return
+    }
+    
+    await xunfeiSpeechService.startRecognition({
+      onStart: () => {
+        isRecording.value = true
+        speechLoading.value = false
+        ElMessage.success('语音识别开始，请开始说话...')
+      },
+      onResult: (text) => {
+        speechText.value = text
+        // 自动填充到特殊需求字段
+        planForm.specialRequirements = text
+      },
+      onEnd: () => {
+        isRecording.value = false
+        ElMessage.success('语音识别结束')
+      },
+      onError: (error) => {
+        isRecording.value = false
+        speechLoading.value = false
+        ElMessage.error(`语音识别失败: ${error}`)
+      }
+    })
+    
+  } catch (error) {
+    speechLoading.value = false
+    isRecording.value = false
+    console.error('语音识别初始化失败:', error)
+    ElMessage.error('语音识别初始化失败')
+  }
+}
+
+const stopSpeechRecognition = async () => {
+  try {
+    xunfeiSpeechService.stopRecognition()
+    isRecording.value = false
+    speechLoading.value = false
+    
+    // 如果识别到了文本，自动填充到表单
+    if (speechText.value) {
+      planForm.specialRequirements = speechText.value
+    }
+  } catch (error) {
+    console.error('停止语音识别失败:', error)
+    ElMessage.error('停止语音识别失败')
+  }
+}
+
 // 检查路由参数
 const checkRouteParams = () => {
   const editParam = route.query.edit as string
@@ -1026,6 +1124,48 @@ onMounted(() => {
 
 .dialog-footer .el-button {
   margin-left: 10px;
+}
+
+/* 语音输入样式 */
+.speech-input-container {
+  width: 100%;
+}
+
+.speech-controls {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.speech-btn {
+  margin-bottom: 10px;
+}
+
+.speech-result {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #e7f3ff;
+  border-radius: 4px;
+  border: 1px solid #91d5ff;
+}
+
+.speech-label {
+  font-weight: bold;
+  color: #1890ff;
+  margin-right: 10px;
+}
+
+.speech-text {
+  color: #333;
+  word-break: break-all;
+}
+
+.speech-warning {
+  color: #f56c6c;
+  font-size: 12px;
+  margin-top: 5px;
 }
 
 /* 编辑功能样式 */
