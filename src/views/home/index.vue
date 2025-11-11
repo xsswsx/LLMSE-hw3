@@ -158,7 +158,9 @@ checkAuthStatus()
     <div class="header">
       <div class="header-content">
         <div class="logo">AI旅行规划</div>
-        <div class="user-actions">
+            <div class="user-actions">
+          <el-button @click="$router.push('/plans')">我的计划</el-button>
+          <el-button type="primary" @click="$router.push('/plan')">智能规划</el-button>
           <template v-if="!isLoggedIn">
             <el-button type="primary" @click="openLogin">登录</el-button>
             <el-button @click="openRegister">注册</el-button>
@@ -173,7 +175,36 @@ checkAuthStatus()
 
     <!-- 主要内容区域 -->
     <div class="main-content">
-      <div class="home-page">home page</div>
+      <div class="home-hero">
+        <h1>AI智能旅行规划</h1>
+        <p class="hero-subtitle">基于火山方舟AI的个性化旅行行程规划，让您的旅行更轻松、更精彩</p>
+        
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon">🚀</div>
+            <h3>智能规划</h3>
+            <p>输入您的旅行需求，AI自动生成完整的行程安排</p>
+          </div>
+          
+          <div class="feature-card">
+            <div class="feature-icon">💡</div>
+            <h3>个性化推荐</h3>
+            <p>根据您的偏好和预算，推荐最适合的景点和活动</p>
+          </div>
+          
+          <div class="feature-card">
+            <div class="feature-icon">💾</div>
+            <h3>云端保存</h3>
+            <p>所有计划安全存储在云端，随时随地查看</p>
+          </div>
+        </div>
+        
+        <div class="cta-section">
+          <el-button type="primary" size="large" @click="$router.push('/plan')">
+            开始规划您的旅程
+          </el-button>
+        </div>
+      </div>
     </div>
 
     <!-- 登录弹窗 -->
