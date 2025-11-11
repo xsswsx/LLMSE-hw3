@@ -53,9 +53,14 @@
       <div class="expense-management-section">
         <div class="section-header">
           <h3>费用记录</h3>
-          <el-button type="primary" @click="addExpense">
-            <i class="el-icon-plus" /> 添加费用
-          </el-button>
+          <div class="action-buttons">
+            <el-button type="success" @click="generateAIAdviceHandler">
+              <i class="el-icon-chat-dot-round" /> AI建议
+            </el-button>
+            <el-button type="primary" @click="addExpense">
+              <i class="el-icon-plus" /> 添加费用
+            </el-button>
+          </div>
         </div>
 
         <!-- 费用统计 -->
@@ -190,6 +195,47 @@
         <el-button type="primary" @click="saveExpense">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- AI建议对话框 -->
+    <el-dialog 
+      title="AI费用建议" 
+      v-model="showAIDialog" 
+      width="600px"
+      :close-on-click-modal="false">
+      <div class="ai-advice-container">
+        <div v-if="isGeneratingAdvice" class="ai-loading">
+          <el-skeleton :rows="5" animated />
+          <div style="text-align: center; margin-top: 20px;">
+            <el-icon class="is-loading"><Loading /></el-icon>
+            <span style="margin-left: 8px;">AI正在分析您的费用数据...</span>
+          </div>
+        </div>
+        
+        <div v-else-if="aiAdvice" class="ai-advice-content">
+          <div class="advice-header">
+            <el-tag type="success">AI建议</el-tag>
+            <span class="advice-title">基于您的旅行计划和费用记录</span>
+          </div>
+          
+          <div class="advice-text">
+            <p>{{ aiAdvice }}</p>
+          </div>
+          
+          <div class="advice-actions">
+            <el-button @click="regenerateAdvice">重新生成</el-button>
+            <el-button type="primary" @click="copyAdvice">复制建议</el-button>
+          </div>
+        </div>
+        
+        <div v-else class="ai-error">
+          <el-empty description="生成AI建议失败，请重试" />
+        </div>
+      </div>
+      
+      <template #footer>
+        <el-button @click="showAIDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -197,9 +243,11 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
 import { supabase } from '@/lib/supabase'
 import { expenseService, type Expense } from '@/lib/expense-service'
 import { travelPlanService } from '@/lib/travel-plan-service'
+import { generateAIAdvice, checkVolcanoArkConfig } from '@/lib/volcano-ark-service'
 
 const route = useRoute()
 const router = useRouter()
@@ -219,6 +267,11 @@ const expenses = ref<Expense[]>([])
 const showAddDialog = ref(false)
 const isEditing = ref(false)
 const editingIndex = ref(-1)
+
+// AI建议状态
+const showAIDialog = ref(false)
+const isGeneratingAdvice = ref(false)
+const aiAdvice = ref('')
 
 // 表单数据
 const expenseForm = reactive({
@@ -463,6 +516,161 @@ const getCategoryColor = (category: string) => {
   return colorMap[category] || '#409EFF'
 }
 
+// 生成AI建议
+const generateAIAdviceHandler = async () => {
+  showAIDialog.value = true
+  isGeneratingAdvice.value = true
+  aiAdvice.value = ''
+  
+  try {
+    // 检查API配置
+    const hasValidConfig = checkVolcanoArkConfig()
+    if (!hasValidConfig) {
+      ElMessage.warning('火山方舟API配置缺失，使用模拟建议')
+      await generateMockAIAdvice()
+      return
+    }
+    
+    // 构造提示词
+    const prompt = constructAIPrompt()
+    
+    // 调用火山方舟API
+    aiAdvice.value = await generateAIAdvice(prompt)
+    
+    ElMessage.success('AI建议生成成功')
+    
+  } catch (error) {
+    console.error('生成AI建议失败:', error)
+    
+    // API调用失败时，使用模拟建议
+    ElMessage.warning('AI服务暂时不可用，使用模拟建议')
+    await generateMockAIAdvice()
+  } finally {
+    isGeneratingAdvice.value = false
+  }
+}
+
+// 构造AI提示词
+const constructAIPrompt = () => {
+  const plan = planInfo.value
+  const totalBudget = plan?.budget || 0
+  const currentExpenses = totalExpense.value
+  const remainingBudgetValue = remainingBudget.value
+  const isOverBudgetValue = isOverBudget.value
+  
+  // 分类统计信息
+  const categoryStatsText = categoryStats.value.map(stat => 
+    `${stat.category}: ${stat.amount}元 (${stat.percentage}%)`
+  ).join('，')
+  
+  // 最近消费记录
+  const recentExpenses = filteredExpenses.value.slice(0, 5).map(expense =>
+    `${expense.content}: ${expense.amount}元`
+  ).join('，')
+  
+  return `
+请根据以下旅行计划和费用记录，为用户的旅游费用管理提供简单建议：
+
+旅行计划信息：
+- 目的地：${plan?.destination || '未知'}
+- 时间：${plan?.start_date || '未知'} 至 ${plan?.end_date || '未知'}
+- 总预算：${totalBudget.toLocaleString()}元
+- 当前支出：${currentExpenses.toLocaleString()}元
+- 剩余预算：${remainingBudgetValue.toLocaleString()}元
+- 预算状态：${isOverBudgetValue ? '已超支' : '正常'}
+
+费用统计：
+${categoryStatsText}
+
+最近消费记录：
+${recentExpenses}
+
+请提供以下方面的建议：
+1. 预算分配是否合理
+2. 潜在的节省机会
+3. 未来消费建议
+
+使用段落格式，可以适当使用emoji，不要使用markdown格式。
+`
+}
+
+// 模拟AI建议（备用方案）
+const generateMockAIAdvice = async () => {
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  
+  // 模拟不同类型的AI建议
+  const adviceTemplates = [
+    `基于您的旅行计划分析，我发现您的费用管理整体比较合理。建议关注以下几点：
+
+📊 **预算分配建议**：
+- 目前${categoryStats.value.find(s => s.category === '交通')?.percentage || 0}%的预算用于交通，相对合理
+- ${categoryStats.value.find(s => s.category === '住宿')?.percentage || 0}%用于住宿，可考虑优化住宿选择
+
+💡 **优化建议**：
+- 餐饮费用占比${categoryStats.value.find(s => s.category === '餐饮')?.percentage || 0}%，建议尝试当地特色小餐馆
+- 购物预算可适当控制，重点放在体验型消费
+
+🎯 **后续建议**：
+- 每日消费控制在${Math.round(remainingBudget.value / Math.max(1, (new Date(planInfo.value?.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))}元以内
+- 预留10%预算作为应急资金`,
+
+    `您的旅行费用管理需要重点关注预算控制。分析如下：
+
+⚠️ **重点关注**：
+- 当前支出${totalExpense.value.toLocaleString()}元，占总预算${planInfo.value?.budget ? Math.round(totalExpense.value / planInfo.value.budget * 100) : 0}%
+- ${isOverBudget.value ? '已超出预算，需要严格控制后续支出' : '预算使用进度正常'}
+
+🔍 **费用分析**：
+- 交通费用占比${categoryStats.value.find(s => s.category === '交通')?.percentage || 0}%，考虑是否有更经济的出行方式
+- 娱乐费用可以适当优化，选择免费或低成本活动
+
+💡 **实用建议**：
+- 制定每日消费上限
+- 优先体验当地文化而非购物消费
+- 关注当地优惠活动和免费景点`,
+
+    `您的旅行费用结构整体健康，以下是我的专业建议：
+
+✅ **优势分析**：
+- 费用分布相对均衡
+- ${!isOverBudget.value ? '预算控制良好' : '需要加强预算管理'}
+
+📈 **优化方向**：
+- 餐饮：尝试当地市场和小吃，体验更地道美食
+- 交通：考虑公共交通或拼车服务节省费用
+- 住宿：提前预订可能有更多优惠选择
+
+🔮 **前瞻建议**：
+- 剩余${remainingBudget.value.toLocaleString()}元预算，建议合理分配到剩余天数
+- 关注${planInfo.value?.destination}当地的消费水平，调整消费策略`
+  ]
+  
+  // 根据当前状态选择最合适的建议模板
+  let selectedTemplate = 0
+  if (isOverBudget.value) {
+    selectedTemplate = 1
+  } else if (remainingBudget.value / (planInfo.value?.budget || 1) > 0.5) {
+    selectedTemplate = 2
+  }
+  
+  aiAdvice.value = adviceTemplates[selectedTemplate]
+}
+
+// 重新生成建议
+const regenerateAdvice = async () => {
+  await generateAIAdviceHandler()
+}
+
+// 复制建议
+const copyAdvice = async () => {
+  try {
+    await navigator.clipboard.writeText(aiAdvice.value)
+    ElMessage.success('建议已复制到剪贴板')
+  } catch (error) {
+    ElMessage.error('复制失败，请手动复制')
+  }
+}
+
 // 组件挂载时初始化
 onMounted(async () => {
   await checkAuthStatus()
@@ -581,6 +789,16 @@ onMounted(async () => {
   margin-bottom: 30px;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
 .expense-stats {
   margin-bottom: 30px;
 }
@@ -641,5 +859,58 @@ onMounted(async () => {
 
 .over-budget-text {
   color: #f56c6c !important;
+}
+
+/* AI建议样式 */
+.ai-advice-container {
+  min-height: 300px;
+}
+
+.ai-loading {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.ai-advice-content {
+  padding: 20px 0;
+}
+
+.advice-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.advice-title {
+  color: #666;
+  font-size: 14px;
+}
+
+.advice-text {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.advice-text p {
+  margin: 0;
+  white-space: pre-wrap;
+  color: #333;
+}
+
+.advice-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.ai-error {
+  text-align: center;
+  padding: 40px 0;
 }
 </style>
