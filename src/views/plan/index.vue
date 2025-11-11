@@ -115,12 +115,26 @@
         <div class="plan-summary">
           <el-card>
             <h4>行程概览</h4>
-            <p>{{ currentPlan.summary }}</p>
-            <div class="summary-details">
-              <span><strong>目的地：</strong>{{ currentPlan.destination }}</span>
-              <span><strong>时长：</strong>{{ currentPlan.duration }}天</span>
-              <span><strong>预算：</strong>{{ currentPlan.budget }}元</span>
-              <span><strong>人数：</strong>{{ currentPlan.travelers }}人</span>
+            <div class="summary-content">
+              <p class="summary-text">{{ currentPlan.summary }}</p>
+              <div class="summary-stats">
+                <div class="stat-item">
+                  <span class="stat-label">目的地</span>
+                  <span class="stat-value">{{ currentPlan.destination }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">时长</span>
+                  <span class="stat-value">{{ currentPlan.duration }}天</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">预算</span>
+                  <span class="stat-value">{{ currentPlan.budget ? currentPlan.budget.toLocaleString() : '--' }}元</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">人数</span>
+                  <span class="stat-value">{{ currentPlan.travelers }}人</span>
+                </div>
+              </div>
             </div>
           </el-card>
         </div>
@@ -277,7 +291,7 @@ const generatePlan = async () => {
     if (progressPercentage.value < 90) {
       progressPercentage.value += 10
     }
-  }, 500)
+  }, 2000)
 
   try {
     const request: TravelPlanRequest = {
@@ -485,11 +499,49 @@ onMounted(() => {
   margin-bottom: 30px;
 }
 
-.summary-details {
+.summary-content {
   display: flex;
+  flex-direction: column;
   gap: 20px;
-  flex-wrap: wrap;
-  margin-top: 10px;
+}
+
+.summary-text {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+  margin: 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #409eff;
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  background: #f0f2f5;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #409eff;
 }
 
 .day-plans {
