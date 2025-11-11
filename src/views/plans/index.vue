@@ -38,19 +38,24 @@
       </div>
 
       <div v-else class="plans-grid">
-        <el-row :gutter="20">
-          <el-col :xs="24" :sm="12" :lg="8" v-for="plan in travelPlans" :key="plan.id">
-            <el-card class="plan-card" shadow="hover">
-              <template #header>
-                <div class="plan-header">
-                  <h4>{{ plan.title }}</h4>
-                  <el-tag :type="plan.is_public ? 'success' : 'info'">
-                    {{ plan.is_public ? '公开' : '私有' }}
-                  </el-tag>
-                </div>
-              </template>
+        <div class="plans-list">
+          <el-card 
+            v-for="plan in travelPlans" 
+            :key="plan.id" 
+            class="plan-card" 
+            shadow="hover"
+          >
+            <template #header>
+              <div class="plan-header">
+                <h4>{{ plan.title }}</h4>
+                <el-tag :type="plan.is_public ? 'success' : 'info'">
+                  {{ plan.is_public ? '公开' : '私有' }}
+                </el-tag>
+              </div>
+            </template>
 
-              <div class="plan-info">
+            <div class="plan-info">
+              <div class="info-grid">
                 <div class="info-item">
                   <span class="label">目的地：</span>
                   <span class="value">{{ plan.destination }}</span>
@@ -76,17 +81,18 @@
                   <span class="value">{{ formatDate(plan.created_at) }}</span>
                 </div>
               </div>
+            </div>
 
-              <template #footer>
-                <div class="plan-actions">
-                  <el-button type="primary" @click="viewPlan(plan)">查看详情</el-button>
-                  <el-button @click="editPlan(plan)">编辑</el-button>
-                  <el-button type="danger" @click="deletePlan(plan)">删除</el-button>
-                </div>
-              </template>
-            </el-card>
-          </el-col>
-        </el-row>
+            <template #footer>
+              <div class="plan-actions">
+                <el-button type="primary" @click="viewPlan(plan)">查看详情</el-button>
+                <el-button @click="editPlan(plan)">编辑</el-button>
+                <el-button type="warning" @click="manageExpenses(plan)">费用管理</el-button>
+                <el-button type="danger" @click="deletePlan(plan)">删除</el-button>
+              </div>
+            </template>
+          </el-card>
+        </div>
       </div>
     </div>
 
@@ -263,6 +269,12 @@ const editPlan = (plan: SavedTravelPlan) => {
   router.push(`/plan?edit=${plan.id}`)
 }
 
+// 费用管理
+const manageExpenses = (plan: SavedTravelPlan) => {
+  // 跳转到费用管理页面，携带计划ID
+  router.push(`/expense?planId=${plan.id}`)
+}
+
 // 删除计划
 const deletePlan = (plan: SavedTravelPlan) => {
   planToDelete.value = plan
@@ -402,9 +414,27 @@ watchLoginStatus()
   margin-top: 20px;
 }
 
+.plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .plan-card {
-  margin-bottom: 20px;
-  height: 100%;
+  margin-bottom: 0;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+@media (max-width: 768px) {
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
 }
 
 .plan-header {
