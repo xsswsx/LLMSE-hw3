@@ -179,6 +179,12 @@ checkAuthStatus()
         <h1>AI智能旅行规划</h1>
         <p class="hero-subtitle">基于火山方舟AI的个性化旅行行程规划，让您的旅行更轻松、更精彩</p>
         
+        <div class="cta-section">
+          <el-button type="primary" size="large" @click="$router.push('/plan')">
+            开始规划您的旅程
+          </el-button>
+        </div>
+
         <div class="feature-grid">
           <div class="feature-card">
             <div class="feature-icon">🚀</div>
@@ -199,11 +205,6 @@ checkAuthStatus()
           </div>
         </div>
         
-        <div class="cta-section">
-          <el-button type="primary" size="large" @click="$router.push('/plan')">
-            开始规划您的旅程
-          </el-button>
-        </div>
       </div>
     </div>
 
@@ -336,7 +337,7 @@ checkAuthStatus()
   .feature-card h3 {
     font-size: 20px;
     color: #333;
-    margin-bottom: 15px;
+    margin-top: 15px;
   }
 
   .feature-card p {
@@ -346,6 +347,7 @@ checkAuthStatus()
 
   .cta-section {
     text-align: center;
+    margin-bottom: 15px;
   }
 
   .user-email {

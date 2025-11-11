@@ -2,15 +2,23 @@
 </script>
 
 <template>
-  <router-view></router-view>
+  <div class="app-container">
+    <router-view class="overall-container"></router-view>
+  </div>
 </template>
 
 <style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+.app-container {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
 }
 
+.overall-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  min-height: 100vh;
+}
 </style>
