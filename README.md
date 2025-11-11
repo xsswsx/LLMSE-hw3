@@ -1,5 +1,37 @@
-# Vue 3 + TypeScript + Vite
+# LLMSE-hw3
+## AI旅行规划师
+这是一个 vibe coding 作业项目。
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+### 技术栈：
+前端：
+Vue 3 + TypeScript + Vite
+使用 Vite Template 创建。
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+后端与数据库：
+Supabase：提供auth作为用户系统、前端可直接调用的数据库增删改查。
+科大讯飞API：提供语音识别转文字的能力。
+火山方舟API：提供大语言模型能力。
+
+### 功能：
+1、智能行程规划: 用户可以通过语音或文字输入旅行目的地、日期、预算、同行人数、旅行偏好。
+AI 会自动生成个性化的旅行路线，包括交通、住宿、景点、餐厅等详细信息。
+
+2、费用预算与管理: 由 AI 进行预算分析，记录旅行开销。
+
+3、用户管理与数据存储:
+
+注册登录系统: 用户可以保存和管理多份旅行计划。
+
+云端行程同步: 旅行计划、偏好设置、费用记录等数据云端同步，方便多设备查看和修改。
+
+### 部署方法：
+
+#### Windows的本地部署：
+按照.env.example的示例，创建.env文件，并填入相应的KEY信息。
+
+确保装有新版本Nodejs，然后在项目根目录执行：
+```
+npm install
+npm run dev
+```
+
