@@ -92,10 +92,13 @@ class TravelPlanService {
         return null
       }
 
+      // 过滤掉不需要更新的字段（如id等）
+      const { id, user_id, created_at, ...updateData } = planData
+      
       const { data, error } = await supabase
         .from('travel_plans')
         .update({
-          ...planData,
+          ...updateData,
           updated_at: new Date().toISOString()
         })
         .eq('id', planId)
@@ -104,6 +107,7 @@ class TravelPlanService {
         .single()
 
       if (error) {
+        console.error('Supabase更新错误:', error)
         throw error
       }
 

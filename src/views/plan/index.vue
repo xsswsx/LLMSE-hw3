@@ -21,8 +21,8 @@
     <!-- 主要内容区域 -->
     <div class="main-content">
       <div class="plan-form-section">
-        <h2>智能行程规划</h2>
-        <p class="subtitle">输入您的旅行需求，AI将为您生成个性化行程</p>
+        <h2>{{ isEditingMode ? '编辑旅行计划' : '智能行程规划' }}</h2>
+        <p class="subtitle">{{ isEditingMode ? '修改您的旅行计划，可重新生成或手动调整' : '输入您的旅行需求，AI将为您生成个性化行程' }}</p>
         
         <!-- 行程规划表单 -->
         <el-form :model="planForm" label-width="120px" class="plan-form">
@@ -68,24 +68,24 @@
 
           <el-form-item label="旅行偏好">
             <el-checkbox-group v-model="planForm.preferences">
-              <el-checkbox label="美食">美食</el-checkbox>
-              <el-checkbox label="购物">购物</el-checkbox>
-              <el-checkbox label="自然风光">自然风光</el-checkbox>
-              <el-checkbox label="历史文化">历史文化</el-checkbox>
-              <el-checkbox label="冒险活动">冒险活动</el-checkbox>
-              <el-checkbox label="休闲放松">休闲放松</el-checkbox>
-              <el-checkbox label="亲子家庭">亲子家庭</el-checkbox>
-              <el-checkbox label="摄影打卡">摄影打卡</el-checkbox>
+              <el-checkbox value="美食">美食</el-checkbox>
+              <el-checkbox value="购物">购物</el-checkbox>
+              <el-checkbox value="自然风光">自然风光</el-checkbox>
+              <el-checkbox value="历史文化">历史文化</el-checkbox>
+              <el-checkbox value="冒险活动">冒险活动</el-checkbox>
+              <el-checkbox value="休闲放松">休闲放松</el-checkbox>
+              <el-checkbox value="亲子家庭">亲子家庭</el-checkbox>
+              <el-checkbox value="摄影打卡">摄影打卡</el-checkbox>
             </el-checkbox-group>
           </el-form-item>
 
           <el-form-item label="旅行风格">
             <el-radio-group v-model="planForm.travelStyle">
-              <el-radio label="经济实惠">经济实惠</el-radio>
-              <el-radio label="舒适体验">舒适体验</el-radio>
-              <el-radio label="奢华享受">奢华享受</el-radio>
-              <el-radio label="背包客">背包客</el-radio>
-              <el-radio label="自由行">自由行</el-radio>
+              <el-radio value="经济实惠">经济实惠</el-radio>
+              <el-radio value="舒适体验">舒适体验</el-radio>
+              <el-radio value="奢华享受">奢华享受</el-radio>
+              <el-radio value="背包客">背包客</el-radio>
+              <el-radio value="自由行">自由行</el-radio>
             </el-radio-group>
           </el-form-item>
 
@@ -141,13 +141,20 @@
 
         <!-- 每日行程 -->
         <div class="day-plans">
-          <h4>每日行程安排</h4>
+          <div class="day-plans-header">
+            <h4>每日行程安排</h4>
+            <el-button type="primary" @click="addNewDayPlan">添加新的一天</el-button>
+          </div>
           <el-card v-for="dayPlan in currentPlan.dayPlans" :key="dayPlan.day" class="day-plan-card">
             <div class="day-header">
               <h5>第{{ dayPlan.day }}天（{{ dayPlan.date }}）</h5>
+              <div class="day-actions">
+                <el-button size="small" @click="editDayPlan(dayPlan)">编辑日期</el-button>
+                <el-button size="small" type="danger" @click="deleteDayPlan(dayPlan.day)">删除</el-button>
+              </div>
             </div>
             <div class="activities">
-              <div v-for="activity in dayPlan.activities" :key="activity.time" class="activity-item">
+              <div v-for="(activity, index) in dayPlan.activities" :key="activity.time + index" class="activity-item">
                 <div class="activity-time">{{ activity.time }}</div>
                 <div class="activity-content">
                   <div class="activity-title">
@@ -160,6 +167,13 @@
                   <div v-if="activity.location" class="activity-location">📍 {{ activity.location }}</div>
                   <div v-if="activity.cost" class="activity-cost">💰 约{{ activity.cost }}元</div>
                 </div>
+                <div class="activity-actions">
+                  <el-button size="small" @click="editActivity(dayPlan.day, index)">编辑</el-button>
+                  <el-button size="small" type="danger" @click="deleteActivity(dayPlan.day, index)">删除</el-button>
+                </div>
+              </div>
+              <div class="add-activity-btn">
+                <el-button type="primary" size="small" @click="addActivity(dayPlan.day)">+ 添加活动</el-button>
               </div>
             </div>
           </el-card>
@@ -196,22 +210,107 @@
         <p>AI正在为您生成个性化行程，请稍候...</p>
       </div>
     </el-dialog>
+
+    <!-- 编辑活动对话框 -->
+    <el-dialog v-model="editActivityDialogVisible" title="编辑活动" width="600px">
+      <div class="edit-activity-form">
+        <el-form :model="editActivityForm" label-width="80px">
+          <el-form-item label="时间">
+            <el-input v-model="editActivityForm.time" placeholder="例如：09:00-12:00" />
+          </el-form-item>
+          <el-form-item label="类型">
+            <el-select v-model="editActivityForm.type" placeholder="请选择活动类型">
+              <el-option label="交通" value="交通" />
+              <el-option label="住宿" value="住宿" />
+              <el-option label="景点" value="景点" />
+              <el-option label="餐饮" value="餐饮" />
+              <el-option label="购物" value="购物" />
+              <el-option label="娱乐" value="娱乐" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="标题">
+            <el-input v-model="editActivityForm.title" placeholder="活动标题" />
+          </el-form-item>
+          <el-form-item label="描述">
+            <el-input v-model="editActivityForm.description" type="textarea" :rows="3" placeholder="活动详细描述" />
+          </el-form-item>
+          <el-form-item label="地点">
+            <el-input v-model="editActivityForm.location" placeholder="活动地点" />
+          </el-form-item>
+          <el-form-item label="费用">
+            <el-input-number v-model="editActivityForm.cost" :min="0" :step="10" placeholder="费用" />
+          </el-form-item>
+          <el-form-item label="时长">
+            <el-input v-model="editActivityForm.duration" placeholder="例如：2小时" />
+          </el-form-item>
+        </el-form>
+        <div class="dialog-footer">
+          <el-button @click="editActivityDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveActivityEdit">保存</el-button>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 添加活动对话框 -->
+    <el-dialog v-model="addActivityDialogVisible" title="添加活动" width="600px">
+      <div class="add-activity-form">
+        <el-form :model="newActivityForm" label-width="80px">
+          <el-form-item label="时间">
+            <el-input v-model="newActivityForm.time" placeholder="例如：09:00-12:00" />
+          </el-form-item>
+          <el-form-item label="类型">
+            <el-select v-model="newActivityForm.type" placeholder="请选择活动类型">
+              <el-option label="交通" value="交通" />
+              <el-option label="住宿" value="住宿" />
+              <el-option label="景点" value="景点" />
+              <el-option label="餐饮" value="餐饮" />
+              <el-option label="购物" value="购物" />
+              <el-option label="娱乐" value="娱乐" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="标题">
+            <el-input v-model="newActivityForm.title" placeholder="活动标题" />
+          </el-form-item>
+          <el-form-item label="描述">
+            <el-input v-model="newActivityForm.description" type="textarea" :rows="3" placeholder="活动详细描述" />
+          </el-form-item>
+          <el-form-item label="地点">
+            <el-input v-model="newActivityForm.location" placeholder="活动地点" />
+          </el-form-item>
+          <el-form-item label="费用">
+            <el-input-number v-model="newActivityForm.cost" :min="0" :step="10" placeholder="费用" />
+          </el-form-item>
+          <el-form-item label="时长">
+            <el-input v-model="newActivityForm.duration" placeholder="例如：2小时" />
+          </el-form-item>
+        </el-form>
+        <div class="dialog-footer">
+          <el-button @click="addActivityDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveNewActivity">添加</el-button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { supabase } from '@/lib/supabase'
 import { volcanoArkService, type TravelPlanRequest, type TravelPlan } from '@/lib/volcano-ark'
 import { travelPlanService, type SavedTravelPlan } from '@/lib/travel-plan-service'
 
 const router = useRouter()
+const route = useRoute()
 
 // 登录状态
 const isLoggedIn = ref(false)
 const userInfo = ref<any>(null)
+
+// 编辑模式
+const editingPlanId = ref<string>('')
+const isEditingMode = ref(false)
 
 // 表单数据
 const planForm = reactive({
@@ -234,6 +333,34 @@ const progressStatus = ref<'success' | 'exception' | 'warning' | undefined>(unde
 
 // 当前生成的计划
 const currentPlan = ref<TravelPlan | null>(null)
+
+// 编辑状态
+const editActivityDialogVisible = ref(false)
+const addActivityDialogVisible = ref(false)
+const editingDay = ref<number>(0)
+const editingActivityIndex = ref<number>(-1)
+
+// 编辑活动表单
+const editActivityForm = reactive({
+  time: '',
+  type: '',
+  title: '',
+  description: '',
+  location: '',
+  cost: 0,
+  duration: ''
+})
+
+// 添加活动表单
+const newActivityForm = reactive({
+  time: '',
+  type: '',
+  title: '',
+  description: '',
+  location: '',
+  cost: 0,
+  duration: ''
+})
 
 // 监听日期范围变化
 watch(dateRange, (newRange) => {
@@ -382,9 +509,18 @@ const savePlan = async () => {
       user_id: '' // 将在服务中自动填充
     }
 
-    const result = await travelPlanService.saveTravelPlan(savedPlan)
+    let result
+    if (isEditingMode.value && editingPlanId.value) {
+      // 编辑模式下更新现有计划
+      savedPlan.id = editingPlanId.value
+      result = await travelPlanService.updateTravelPlan(editingPlanId.value, savedPlan)
+    } else {
+      // 新创建计划
+      result = await travelPlanService.saveTravelPlan(savedPlan)
+    }
+    
     if (result) {
-      ElMessage.success('计划保存成功！')
+      ElMessage.success(isEditingMode.value ? '计划更新成功！' : '计划保存成功！')
     }
   } catch (error) {
     ElMessage.error('保存失败')
@@ -410,9 +546,224 @@ const generateNewPlan = () => {
   generatePlan()
 }
 
-// 组件挂载时检查登录状态
+
+
+// 编辑活动
+const editActivity = (day: number, activityIndex: number) => {
+  if (!currentPlan.value) return
+  
+  const dayPlan = currentPlan.value.dayPlans.find(d => d.day === day)
+  if (!dayPlan) return
+  
+  const activity = dayPlan.activities[activityIndex]
+  if (!activity) return
+  
+  editingDay.value = day
+  editingActivityIndex.value = activityIndex
+  
+  // 填充编辑表单
+  editActivityForm.time = activity.time || ''
+  editActivityForm.type = activity.type || ''
+  editActivityForm.title = activity.title || ''
+  editActivityForm.description = activity.description || ''
+  editActivityForm.location = activity.location || ''
+  editActivityForm.cost = activity.cost || 0
+  editActivityForm.duration = activity.duration || ''
+  
+  editActivityDialogVisible.value = true
+}
+
+// 保存活动编辑
+const saveActivityEdit = () => {
+  if (!currentPlan.value || editingDay.value === 0 || editingActivityIndex.value === -1) return
+  
+  const dayPlan = currentPlan.value.dayPlans.find(d => d.day === editingDay.value)
+  if (!dayPlan) return
+  
+  // 更新活动数据
+  dayPlan.activities[editingActivityIndex.value] = {
+    time: editActivityForm.time,
+    type: editActivityForm.type as any,
+    title: editActivityForm.title,
+    description: editActivityForm.description,
+    location: editActivityForm.location,
+    cost: editActivityForm.cost,
+    duration: editActivityForm.duration
+  }
+  
+  editActivityDialogVisible.value = false
+  editingDay.value = 0
+  editingActivityIndex.value = -1
+  
+  // 重置表单
+  Object.assign(editActivityForm, {
+    time: '',
+    type: '',
+    title: '',
+    description: '',
+    location: '',
+    cost: 0,
+    duration: ''
+  })
+  
+  ElMessage.success('活动编辑成功')
+}
+
+// 删除活动
+const deleteActivity = (day: number, activityIndex: number) => {
+  if (!currentPlan.value) return
+  
+  const dayPlan = currentPlan.value.dayPlans.find(d => d.day === day)
+  if (!dayPlan) return
+  
+  dayPlan.activities.splice(activityIndex, 1)
+  ElMessage.success('活动删除成功')
+}
+
+// 添加活动
+const addActivity = (day: number) => {
+  editingDay.value = day
+  
+  // 重置表单
+  Object.assign(newActivityForm, {
+    time: '',
+    type: '',
+    title: '',
+    description: '',
+    location: '',
+    cost: 0,
+    duration: ''
+  })
+  
+  addActivityDialogVisible.value = true
+}
+
+// 保存新活动
+const saveNewActivity = () => {
+  if (!currentPlan.value || editingDay.value === 0) return
+  
+  const dayPlan = currentPlan.value.dayPlans.find(d => d.day === editingDay.value)
+  if (!dayPlan) return
+  
+  // 添加新活动
+  dayPlan.activities.push({
+    time: newActivityForm.time,
+    type: newActivityForm.type as any,
+    title: newActivityForm.title,
+    description: newActivityForm.description,
+    location: newActivityForm.location,
+    cost: newActivityForm.cost,
+    duration: newActivityForm.duration
+  })
+  
+  addActivityDialogVisible.value = false
+  editingDay.value = 0
+  
+  // 重置表单
+  Object.assign(newActivityForm, {
+    time: '',
+    type: '',
+    title: '',
+    description: '',
+    location: '',
+    cost: 0,
+    duration: ''
+  })
+  
+  ElMessage.success('活动添加成功')
+}
+
+// 添加新的一天
+const addNewDayPlan = () => {
+  if (!currentPlan.value) return
+  
+  const newDay = currentPlan.value.dayPlans.length + 1
+  const startDate = new Date(planForm.startDate)
+  const newDate = new Date(startDate)
+  newDate.setDate(startDate.getDate() + newDay - 1)
+  
+  currentPlan.value.dayPlans.push({
+    day: newDay,
+    date: newDate.toISOString().split('T')[0],
+    activities: []
+  })
+  
+  ElMessage.success(`第${newDay}天添加成功`)
+}
+
+// 编辑日期
+const editDayPlan = (dayPlan: any) => {
+  const newDate = prompt(`请输入第${dayPlan.day}天的新日期 (YYYY-MM-DD):`, dayPlan.date)
+  if (newDate) {
+    dayPlan.date = newDate
+    ElMessage.success('日期修改成功')
+  }
+}
+
+// 删除某一天
+const deleteDayPlan = (day: number) => {
+  if (!currentPlan.value) return
+  
+  if (currentPlan.value.dayPlans.length <= 1) {
+    ElMessage.warning('至少需要保留一天行程')
+    return
+  }
+  
+  currentPlan.value.dayPlans = currentPlan.value.dayPlans.filter(d => d.day !== day)
+  
+  // 重新排序天数
+  currentPlan.value.dayPlans.forEach((d, index) => {
+    d.day = index + 1
+  })
+  
+  ElMessage.success(`第${day}天删除成功`)
+}
+
+// 加载已存在的计划
+const loadExistingPlan = async (planId: string) => {
+  try {
+    const plan = await travelPlanService.getTravelPlanById(planId)
+    if (plan) {
+      // 填充表单数据
+      planForm.destination = plan.destination
+      planForm.startDate = plan.start_date
+      planForm.endDate = plan.end_date
+      planForm.budget = plan.budget
+      planForm.travelers = plan.travelers
+      planForm.preferences = plan.preferences || []
+      planForm.travelStyle = plan.travel_style
+      planForm.specialRequirements = plan.special_requirements || ''
+      
+      // 设置日期范围
+      dateRange.value = [plan.start_date, plan.end_date]
+      
+      // 设置当前计划
+      currentPlan.value = plan.plan_data
+      
+      // 设置为编辑模式
+      isEditingMode.value = true
+      editingPlanId.value = planId
+    }
+  } catch (error) {
+    ElMessage.error('加载计划失败')
+  }
+}
+
+// 检查路由参数
+const checkRouteParams = () => {
+  const editParam = route.query.edit as string
+  if (editParam) {
+    editingPlanId.value = editParam
+    isEditingMode.value = true
+    // 加载已存在的计划
+    loadExistingPlan(editParam)
+  }
+}
+
+// 组件挂载时检查登录状态和路由参数
 onMounted(() => {
   checkAuthStatus()
+  checkRouteParams()
 })
 </script>
 
@@ -625,5 +976,105 @@ onMounted(() => {
 .loading-content p {
   margin-top: 15px;
   color: #666;
+}
+
+/* 编辑功能样式 */
+.day-plans-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.day-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.activity-item {
+  display: flex;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  position: relative;
+}
+
+.activity-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-left: 10px;
+}
+
+.add-activity-btn {
+  text-align: center;
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+
+.edit-activity-form,
+.add-activity-form {
+  padding: 20px 0;
+}
+
+.dialog-footer {
+  text-align: right;
+  margin-top: 20px;
+}
+
+.dialog-footer .el-button {
+  margin-left: 10px;
+}
+
+/* 编辑功能样式 */
+.day-plans-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.day-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.activity-item {
+  display: flex;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  position: relative;
+}
+
+.activity-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-left: 10px;
+}
+
+.add-activity-btn {
+  text-align: center;
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+
+.edit-activity-form,
+.add-activity-form {
+  padding: 20px 0;
+}
+
+.dialog-footer {
+  text-align: right;
+  margin-top: 20px;
+}
+
+.dialog-footer .el-button {
+  margin-left: 10px;
 }
 </style>
