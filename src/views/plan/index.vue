@@ -26,6 +26,63 @@
         
         <!-- 行程规划表单 -->
         <el-form :model="planForm" label-width="120px" class="plan-form">
+
+          <!-- 语音输入区域 -->
+          <el-form-item label="语音输入">
+            <div class="speech-input-container">
+              <div class="speech-controls">
+                <el-button 
+                  :type="isRecording ? 'danger' : 'primary'" 
+                  @click="toggleSpeechRecognition"
+                  :loading="speechLoading"
+                  :disabled="!speechSupported"
+                  class="speech-btn"
+                >
+                  <i :class="isRecording ? 'el-icon-microphone' : 'el-icon-microphone'" />
+                  {{ isRecording ? '停止录音' : '开始语音输入' }}
+                </el-button>
+                <div class="speech-status">
+                  <span v-if="isRecording" class="recording-indicator">
+                    <i class="el-icon-loading" /> 正在录音中...
+                  </span>
+                  <span v-else-if="speechText" class="ready-indicator">
+                    <i class="el-icon-success" /> 语音识别完成
+                  </span>
+                  <span v-else class="ready-indicator">
+                    <i class="el-icon-info" /> 点击开始录音
+                  </span>
+                </div>
+                <div v-if="!speechSupported" class="speech-warning">
+                  <i class="el-icon-warning" /> 您的浏览器不支持语音功能
+                </div>
+              </div>
+              <div v-if="speechText" class="speech-result-container">
+                <div class="speech-result-header">
+                  <span class="speech-label">语音识别结果：</span>
+                  <el-button size="small" @click="copySpeechText">复制</el-button>
+                </div>
+                <el-input
+                  v-model="speechText"
+                  type="textarea"
+                  :rows="3"
+                  readonly
+                  class="speech-result-textarea"
+                  placeholder="语音识别结果将显示在这里"
+                />
+                <div class="speech-actions">
+                  <el-button size="small" @click="analyzeSpeechText" :loading="analyzingSpeech" type="primary">
+                    <i class="el-icon-magic-stick" /> 应用至需求
+                  </el-button>
+                  <el-button size="small" @click="copySpeechText">复制</el-button>
+                  <el-button size="small" @click="clearSpeechText">清空</el-button>
+                </div>
+                <div v-if="analyzingSpeech" class="analyzing-status">
+                  <i class="el-icon-loading" /> AI正在解析您的需求...
+                </div>
+              </div>
+            </div>
+          </el-form-item>
+
           <el-form-item label="旅行目的地" required>
             <el-input 
               v-model="planForm.destination" 
@@ -90,33 +147,12 @@
           </el-form-item>
 
           <el-form-item label="特殊需求">
-            <div class="speech-input-container">
-              <el-input
-                v-model="planForm.specialRequirements"
-                type="textarea"
-                :rows="3"
-                placeholder="例如：带孩子出行、有老人、饮食禁忌、特殊爱好等"
-              />
-              <div class="speech-controls">
-                <el-button 
-                  :type="isRecording ? 'danger' : 'primary'" 
-                  @click="toggleSpeechRecognition"
-                  :loading="speechLoading"
-                  :disabled="!speechSupported"
-                  class="speech-btn"
-                >
-                  <i :class="isRecording ? 'el-icon-microphone' : 'el-icon-microphone'" />
-                  {{ isRecording ? '停止录音' : '语音输入' }}
-                </el-button>
-                <div v-if="speechText" class="speech-result">
-                  <span class="speech-label">语音识别结果：</span>
-                  <span class="speech-text">{{ speechText }}</span>
-                </div>
-                <div v-if="!speechSupported" class="speech-warning">
-                  您的浏览器不支持语音功能
-                </div>
-              </div>
-            </div>
+            <el-input
+              v-model="planForm.specialRequirements"
+              type="textarea"
+              :rows="3"
+              placeholder="例如：带孩子出行、有老人、饮食禁忌、特殊爱好等"
+            />
           </el-form-item>
 
           <el-form-item>
@@ -361,6 +397,7 @@ const speechLoading = ref(false)
 const isRecording = ref(false)
 const speechText = ref('')
 const speechSupported = ref(true)
+const analyzingSpeech = ref(false)
 
 // 编辑状态
 const editActivityDialogVisible = ref(false)
@@ -810,7 +847,6 @@ const startSpeechRecognition = async () => {
       onResult: (text) => {
         speechText.value = text
         // 自动填充到特殊需求字段
-        planForm.specialRequirements = text
       },
       onEnd: () => {
         isRecording.value = false
@@ -837,14 +873,110 @@ const stopSpeechRecognition = async () => {
     isRecording.value = false
     speechLoading.value = false
     
-    // 如果识别到了文本，自动填充到表单
-    if (speechText.value) {
-      planForm.specialRequirements = speechText.value
-    }
   } catch (error) {
     console.error('停止语音识别失败:', error)
     ElMessage.error('停止语音识别失败')
   }
+}
+
+// 语音相关功能方法
+const analyzeSpeechText = async () => {
+  if (!speechText.value.trim()) {
+    ElMessage.warning('请先完成语音识别')
+    return
+  }
+
+  analyzingSpeech.value = true
+  
+  try {
+    // 构建发送给火山方舟的Prompt
+    const prompt = `请分析以下旅行需求，并严格按照JSON格式返回解析结果。
+
+用户语音输入："${speechText.value}"
+
+请识别并提取以下信息：
+1. 目的地（destination）：明确提到的旅行地点
+2. 旅行时间（travelDate）：出发和返回日期或时间段
+3. 预算（budget）：明确的预算金额
+4. 同行人数（travelers）：人数信息
+5. 旅行偏好（preferences）：从以下选项中选择：美食、购物、自然风光、历史文化、冒险活动、休闲放松、亲子家庭、摄影打卡
+6. 旅行风格（travelStyle）：从以下选项中选择：经济实惠、舒适体验、奢华享受、背包客、自由行
+7. 特殊需求（specialRequirements）：其他具体需求
+
+请严格按照以下JSON格式返回，不要包含任何其他文本：
+{
+  "destination": "",
+  "travelDate": "",
+  "budget": 0,
+  "travelers": 0,
+  "preferences": [],
+  "travelStyle": "",
+  "specialRequirements": ""
+}
+
+如果没有明确信息，对应字段请保持为空字符串或空数组。`
+
+    // 发送到火山方舟大模型
+    const response = await volcanoArkService.analyzeTravelRequirements(prompt)
+
+    console.log('AI分析结果:', response)
+
+    if (response && typeof response === 'string') {
+      // 尝试解析JSON
+      try {
+        const parsedData = JSON.parse(response)
+        
+        // 将解析结果填充到表单
+        if (parsedData.destination) {
+          planForm.destination = parsedData.destination
+        }
+        
+        if (parsedData.budget && parsedData.budget > 0) {
+          planForm.budget = parsedData.budget
+        }
+        
+        if (parsedData.travelers && parsedData.travelers > 0) {
+          planForm.travelers = parsedData.travelers
+        }
+        
+        if (parsedData.preferences && Array.isArray(parsedData.preferences)) {
+          planForm.preferences = parsedData.preferences
+        }
+        
+        if (parsedData.travelStyle) {
+          planForm.travelStyle = parsedData.travelStyle
+        }
+        
+        if (parsedData.specialRequirements) {
+          planForm.specialRequirements = parsedData.specialRequirements
+        }
+        
+        ElMessage.success('AI已成功解析并填充您的需求')
+        
+      } catch (parseError) {
+        console.error('JSON解析失败:', parseError)
+        ElMessage.error('解析结果格式错误，请尝试重新分析')
+      }
+    } else {
+      ElMessage.error('AI解析失败，请稍后重试')
+    }
+    
+  } catch (error) {
+    console.error('AI分析失败:', error)
+    ElMessage.error('AI分析失败，请检查网络连接')
+  } finally {
+    analyzingSpeech.value = false
+  }
+}
+
+const copySpeechText = () => {
+  navigator.clipboard.writeText(speechText.value)
+  ElMessage.success('已复制到剪贴板')
+}
+
+const clearSpeechText = () => {
+  speechText.value = ''
+  ElMessage.info('已清空语音识别结果')
 }
 
 // 检查路由参数
@@ -1132,40 +1264,88 @@ onMounted(() => {
 }
 
 .speech-controls {
-  margin-top: 10px;
-  padding: 10px;
+  padding: 20px;
   background-color: #f8f9fa;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid #e9ecef;
+  margin-bottom: 15px;
 }
 
 .speech-btn {
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
-.speech-result {
+.speech-status {
+  margin-bottom: 15px;
+}
+
+.recording-indicator {
+  color: #f56c6c;
+  font-weight: 500;
+}
+
+.ready-indicator {
+  color: #67c23a;
+  font-weight: 500;
+}
+
+.speech-warning {
+  color: #e6a23c;
+  font-size: 14px;
   margin-top: 10px;
-  padding: 10px;
-  background-color: #e7f3ff;
+  padding: 8px 12px;
+  background-color: #fdf6ec;
   border-radius: 4px;
+  border-left: 4px solid #e6a23c;
+}
+
+.speech-result-container {
+  margin-top: 15px;
+  padding: 20px;
+  background-color: #f0f9ff;
+  border-radius: 8px;
   border: 1px solid #91d5ff;
+}
+
+.speech-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
 .speech-label {
   font-weight: bold;
   color: #1890ff;
-  margin-right: 10px;
+  font-size: 16px;
 }
 
-.speech-text {
-  color: #333;
-  word-break: break-all;
+.speech-result-textarea {
+  margin-bottom: 15px;
 }
 
-.speech-warning {
-  color: #f56c6c;
-  font-size: 12px;
-  margin-top: 5px;
+.speech-result-textarea :deep(.el-textarea__inner) {
+  background-color: #fff;
+  border-color: #91d5ff;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.speech-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.analyzing-status {
+  text-align: center;
+  padding: 10px;
+  background-color: #f0f9ff;
+  border: 1px solid #91d5ff;
+  border-radius: 4px;
+  color: #1890ff;
+  font-size: 14px;
 }
 
 /* 编辑功能样式 */

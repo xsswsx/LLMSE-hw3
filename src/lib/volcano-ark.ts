@@ -54,6 +54,80 @@ class VolcanoArkService {
     }
   }
 
+  // 分析旅行需求
+  async analyzeTravelRequirements(prompt: string): Promise<string | null> {
+    if (!this.config.apiKey) {
+      ElMessage.error('请配置火山方舟API密钥')
+      return null
+    }
+
+    try {
+      // 调用火山方舟API
+      const response = await this.callVolcanoArkAPI(prompt)
+      
+      if (response && response.choices && response.choices[0] && response.choices[0].message) {
+        const content = response.choices[0].message.content
+        
+        // 提取JSON内容（可能会包含一些说明文字）
+        const jsonMatch = content.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          return jsonMatch[0]
+        }
+        
+        // 如果没有找到JSON，直接返回内容
+        return content
+      }
+      
+      // 如果API调用失败，使用模拟分析
+      ElMessage.warning('API调用失败，使用模拟分析')
+      return this.generateMockAnalysis(prompt)
+      
+    } catch (error) {
+      console.error('火山方舟API调用失败:', error)
+      
+      // 使用模拟分析作为备选方案
+      ElMessage.warning('API调用失败，使用模拟分析作为备选方案')
+      return this.generateMockAnalysis(prompt)
+    }
+  }
+
+  // 分析旅行需求
+  async analyzeTravelRequirements(prompt: string): Promise<string | null> {
+    if (!this.config.apiKey) {
+      ElMessage.error('请配置火山方舟API密钥')
+      return null
+    }
+
+    try {
+      // 调用火山方舟API
+      const response = await this.callVolcanoArkAPI(prompt)
+      
+      if (response && response.choices && response.choices[0] && response.choices[0].message) {
+        const content = response.choices[0].message.content
+        
+        // 提取JSON内容（可能会包含一些说明文字）
+        const jsonMatch = content.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          return jsonMatch[0]
+        }
+        
+        // 如果没有找到JSON，直接返回内容
+        return content
+      }
+      
+      // 如果API调用失败，使用模拟分析
+      ElMessage.warning('API调用失败，使用模拟分析')
+      return this.generateMockAnalysis(prompt)
+      
+    } catch (error) {
+      console.error('火山方舟API调用失败:', error)
+      
+      // 使用模拟分析作为备选方案
+      ElMessage.warning('API调用失败，使用模拟分析作为备选方案')
+      return this.generateMockAnalysis(prompt)
+    }
+  }
+
   // 生成AI行程规划
   async generateTravelPlan(request: TravelPlanRequest): Promise<TravelPlan | null> {
     if (!this.config.apiKey) {
@@ -356,6 +430,80 @@ class VolcanoArkService {
     }
 
     return await response.json()
+  }
+
+  // 生成模拟分析结果
+  private generateMockAnalysis(prompt: string): string {
+    // 从prompt中提取语音文本
+    const speechMatch = prompt.match(/用户语音输入："([^"]+)"/)
+    const speechText = speechMatch ? speechMatch[1] : '未识别到语音内容'
+    
+    // 基于语音内容生成模拟分析
+    let destination = ''
+    let budget = 0
+    let travelers = 0
+    let preferences: string[] = []
+    let travelStyle = ''
+    let specialRequirements = ''
+
+    // 简单的关键词匹配逻辑
+    if (speechText.includes('日本') || speechText.includes('东京')) {
+      destination = '日本东京'
+    } else if (speechText.includes('泰国') || speechText.includes('普吉岛')) {
+      destination = '泰国普吉岛'
+    } else if (speechText.includes('北京')) {
+      destination = '北京'
+    }
+
+    // 预算识别
+    const budgetMatch = speechText.match(/(\d+)[千万]?元/)
+    if (budgetMatch) {
+      budget = parseInt(budgetMatch[1]) * 10000
+    }
+
+    // 人数识别
+    const travelersMatch = speechText.match(/(\d+)人/)
+    if (travelersMatch) {
+      travelers = parseInt(travelersMatch[1])
+    }
+
+    // 偏好识别
+    if (speechText.includes('美食') || speechText.includes('吃')) {
+      preferences.push('美食')
+    }
+    if (speechText.includes('购物') || speechText.includes('买')) {
+      preferences.push('购物')
+    }
+    if (speechText.includes('自然') || speechText.includes('风光')) {
+      preferences.push('自然风光')
+    }
+    if (speechText.includes('文化') || speechText.includes('历史')) {
+      preferences.push('历史文化')
+    }
+
+    // 风格识别
+    if (speechText.includes('经济') || speechText.includes('便宜')) {
+      travelStyle = '经济实惠'
+    } else if (speechText.includes('舒适') || speechText.includes('舒适')) {
+      travelStyle = '舒适体验'
+    }
+
+    // 特殊需求
+    if (speechText.includes('孩子') || speechText.includes('小孩')) {
+      specialRequirements = '带孩子出行，需要亲子活动'
+    } else if (speechText.includes('老人')) {
+      specialRequirements = '有老人同行，需要舒适安排'
+    }
+
+    return JSON.stringify({
+      destination: destination,
+      travelDate: '',
+      budget: budget,
+      travelers: travelers,
+      preferences: preferences,
+      travelStyle: travelStyle,
+      specialRequirements: specialRequirements
+    }, null, 2)
   }
 }
 
